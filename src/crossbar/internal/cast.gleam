@@ -3,10 +3,7 @@ import gleam/float
 import gleam/int
 import gleam/result
 
-fn cast(
-  from: b,
-  to: dynamic.Decoder(a),
-) -> Result(a, List(dynamic.DecodeError)) {
+fn cast(from: b, to: dynamic.Decoder(a)) -> Result(a, List(dynamic.DecodeError)) {
   dynamic.from(from)
   |> to
   |> fn(x) {
