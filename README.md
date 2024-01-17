@@ -3,20 +3,30 @@
 [![Package Version](https://img.shields.io/hexpm/v/crossbar)](https://hex.pm/packages/crossbar)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/crossbar/)
 
-## Quick start
+## Usage
 
-```sh
-gleam run   # Run the project
-gleam test  # Run the tests
-gleam shell # Run an Erlang shell
+```gleam
+import gleam/io
+import crossbar.{int, max_size, min_size, required, validate}
+
+pub fn main() {
+  int("age", 16)
+  |> required
+  |> min_size(18.0)
+  |> max_size(21.0)
+  |> validate
+  |> io.debug
+}
 ```
 
-## Installation
+The snippet above will return the following error:
 
-If available on Hex this package can be added to your Gleam project:
+> Error([FailedRule("age", "min_size", "must be at least 18.0")])
+
+## Installation
 
 ```sh
 gleam add crossbar
 ```
 
-and its documentation can be found at <https://hexdocs.pm/crossbar>.
+Documentation can be found at <https://hexdocs.pm/crossbar>.

@@ -1,38 +1,20 @@
 import crossbar/internal/cast
+import crossbar/internal/field.{
+  type Field, type Rule, BoolField, Eq, FloatField, IntField, MaxLength, MaxSize,
+  MinLength, MinSize, NotEq, OptionalBoolField, OptionalFloatField,
+  OptionalIntField, OptionalStringField, Regex, Required, StringField,
+  UncompiledRegex, ValidatorFunction,
+}
 import gleam/bool
 import gleam/float
 import gleam/int
 import gleam/list.{append}
-import gleam/option.{type Option, None, Some}
-import gleam/regex.{type Regex}
-import gleam/string
+import gleam/option.{type Option}
+import gleam/regex
 
-pub opaque type Rule(a) {
-  Required
-  MinSize(Float)
-  MaxSize(Float)
-  MinLength(Int)
-  MaxLength(Int)
-  Eq(name: String, value: a)
-  NotEq(name: String, value: a)
-  UncompiledRegex(name: String, regex: String, error: String)
-  Regex(name: String, regex: Regex, error: String)
-  ValidatorFunction(name: String, validator: fn(a) -> Bool, error: String)
-}
-
-pub opaque type Field(a) {
-  IntField(name: String, value: Int, rules: List(Rule(a)))
-  FloatField(name: String, value: Float, rules: List(Rule(a)))
-  StringField(name: String, value: String, rules: List(Rule(a)))
-  BoolField(name: String, value: Bool, rules: List(Rule(a)))
-  OptionalIntField(name: String, value: Option(Int), rules: List(Rule(a)))
-  OptionalFloatField(name: String, value: Option(Float), rules: List(Rule(a)))
-  OptionalStringField(name: String, value: Option(String), rules: List(Rule(a)))
-  OptionalBoolField(name: String, value: Option(Bool), rules: List(Rule(a)))
-}
-
+/// The `CrossBarError` type is used to represent errors that occur during validation.
 pub type CrossBarError {
-  FailedRule(rule: String, error: String)
+  FailedRule(name: String, rule: String, error: String)
 }
 
 pub type ValidationResult(a) =
@@ -209,11 +191,7 @@ pub fn max_length(field field: Field(_), length length: Int) -> Field(_) {
 }
 
 /// The `eq` rule makes sure that the field is equal to the given value, strings are compared securely bit by bit, so this is safe to use for passwords, other types are compared directly.
-pub fn eq(
-  field field: Field(a),
-  name name: String,
-  value value: a,
-) -> Field(a) {
+pub fn eq(field field: Field(a), name name: String, value value: a) -> Field(a) {
   append_rule(field, Eq(name, value))
 }
 
@@ -262,7 +240,7 @@ pub fn with_validator(
 pub fn regex(
   field field: Field(a),
   rule_name name: String,
-  regex regex: Regex,
+  regex regex: regex.Regex,
   error_message error: String,
 ) -> Field(a) {
   append_rule(field, Regex(name, regex, error))
@@ -286,25 +264,6 @@ pub fn uncompiled_regex(
   append_rule(field, UncompiledRegex(name, regex, error))
 }
 
-fn validate_required(field: Field(a)) -> Bool {
-  case field {
-    IntField(_, value, _) -> value != 0
-    FloatField(_, value, _) -> value != 0.0
-    StringField(_, value, _) -> string.trim(value) != ""
-    BoolField(_, _, _) -> True
-    OptionalIntField(_, value, _) ->
-      option.is_some(value) && option.unwrap(value, or: 0) != 0
-    OptionalFloatField(_, value, _) ->
-      option.is_some(value) && option.unwrap(value, or: 0.0) != 0.0
-    OptionalStringField(_, value, _) ->
-      case value {
-        Some(v) -> string.trim(v) != ""
-        None -> False
-      }
-    OptionalBoolField(_, value, _) -> option.is_some(value)
-  }
-}
-
 pub fn validate(field: Field(a)) -> ValidationResult(a) {
   let validation_result = validate_field(field, field.rules, [])
 
@@ -320,20 +279,28 @@ fn validate_field(
   errors: List(CrossBarError),
 ) -> List(CrossBarError) {
   case rules {
-    [] -> errors
     [rule, ..other_rules] -> {
       let validation_result = case rule {
-        Required -> validate_required(field)
+        Required -> field.validate_required(field)
+        MinSize(size) -> field.validate_min_size(field, size)
+        MaxSize(size) -> field.validate_max_size(field, size)
         _ -> todo as "other rules have not been implemented yet"
       }
 
-      use <- bool.guard(when: validation_result, return: errors)
-      let errors =
-        append(errors, [
-          FailedRule(rule: rule_to_string(rule), error: get_error_message(rule)),
-        ])
+      let new_errors = case validation_result {
+        True -> errors
+        False ->
+          append(errors, [
+            FailedRule(
+              name: field.name,
+              rule: rule_to_string(rule),
+              error: get_error_message(rule),
+            ),
+          ])
+      }
 
-      validate_field(field, other_rules, errors)
+      validate_field(field, other_rules, new_errors)
     }
+    [] -> errors
   }
 }
