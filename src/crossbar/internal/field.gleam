@@ -51,7 +51,7 @@ pub fn validate_required(field: Field(_)) -> Bool {
   }
 }
 
-pub fn validate_min_size(field: Field(_), min: Float) -> Bool {
+pub fn validate_min_value(field: Field(_), min: Float) -> Bool {
   let value = case field {
     IntField(_, value, _) -> int.to_float(value)
     FloatField(_, value, _) -> value
@@ -70,7 +70,7 @@ pub fn validate_min_size(field: Field(_), min: Float) -> Bool {
   float.min(min, value) == min
 }
 
-pub fn validate_max_size(field: Field(_), max: Float) -> Bool {
+pub fn validate_max_value(field: Field(_), max: Float) -> Bool {
   let value = case field {
     IntField(_, value, _) -> int.to_float(value)
     FloatField(_, value, _) -> value

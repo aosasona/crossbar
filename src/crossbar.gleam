@@ -73,8 +73,8 @@ pub fn optional_bool(
 pub fn rule_to_string(rule: Rule(_)) -> String {
   case rule {
     Required -> "required"
-    MinSize(_) -> "min_size"
-    MaxSize(_) -> "max_size"
+    MinSize(_) -> "min_value"
+    MaxSize(_) -> "max_value"
     MinLength(_) -> "min_length"
     MaxLength(_) -> "max_length"
     Eq(_, _) -> "eq"
@@ -158,21 +158,21 @@ pub fn required(field field: Field(_)) -> Field(_) {
   append_rule(field, Required)
 }
 
-/// The `min_size` rule makes sure that the field is at least the given (byte where it applies) size.
+/// The `min_value` rule makes sure that the field is at least the given (byte where it applies) size.
 /// > Strings are counted in bytes (as bit arrays), `Int`s and `Float`s are evaluated directly, `Bool`s are treated as their binary equivalent (0 or 1).
-pub fn min_size(field field: Field(_), size size: Float) -> Field(_) {
+pub fn min_value(field field: Field(_), size size: Float) -> Field(_) {
   append_rule(field, MinSize(size))
 }
 
-/// The `max_size` rule makes sure that the field is at most the given (byte) size.
+/// The `max_value` rule makes sure that the field is at most the given (byte) size.
 /// > Strings are counted in bytes (as bit arrays), `Int`s and `Float`s are evaluated directly, `Bool`s are treated as their binary equivalent (0 or 1).
-pub fn max_size(field field: Field(_), size size: Float) -> Field(_) {
+pub fn max_value(field field: Field(_), size size: Float) -> Field(_) {
   append_rule(field, MaxSize(size))
 }
 
 /// The `min_length` rule makes sure that the field is at least the given length, this is the expected behaviour in the following cases:
-/// > `Int`: the length of the string representation of the number, this isn't very useful to you, but it's here for completeness sake. You probably want to use `min_size` instead.
-/// > `Float`: the length of the string representation of the number, this isn't very useful to you, but it's here for completeness sake. You probably want to use `min_size` instead.
+/// > `Int`: the length of the string representation of the number, this isn't very useful to you, but it's here for completeness sake. You probably want to use `min_value` instead.
+/// > `Float`: the length of the string representation of the number, this isn't very useful to you, but it's here for completeness sake. You probably want to use `min_value` instead.
 /// > `String`: the length of the string is evaluated directly
 /// > `Bool`: this also isn't very useful to you, but it's here for completeness sake.
 /// > `Option`: this is considered empty if it is `None`, the Some values are evaluated as their respective types.
@@ -181,8 +181,8 @@ pub fn min_length(field field: Field(_), length length: Int) -> Field(_) {
 }
 
 /// The `max_length` rule makes sure that the field is at most the given length, this is the expected behaviour in the following cases:
-/// > `Int`: the length of the string representation of the number, this isn't very useful to you, but it's here for completeness sake. You probably want to use `max_size` instead.
-/// > `Float`: the length of the string representation of the number, this also isn't very useful to you, but it's here for completeness sake. You probably want to use `max_size` instead.
+/// > `Int`: the length of the string representation of the number, this isn't very useful to you, but it's here for completeness sake. You probably want to use `max_value` instead.
+/// > `Float`: the length of the string representation of the number, this also isn't very useful to you, but it's here for completeness sake. You probably want to use `max_value` instead.
 /// > `String`: the length of the string is evaluated directly
 /// > `Bool`: this also isn't very useful to you, but it's here for completeness sake.
 /// > `Option`: this is considered empty if it is `None`, the Some values are evaluated as their respective types.
@@ -282,8 +282,8 @@ fn validate_field(
     [rule, ..other_rules] -> {
       let validation_result = case rule {
         Required -> field.validate_required(field)
-        MinSize(size) -> field.validate_min_size(field, size)
-        MaxSize(size) -> field.validate_max_size(field, size)
+        MinSize(size) -> field.validate_min_value(field, size)
+        MaxSize(size) -> field.validate_max_value(field, size)
         MinLength(length) -> field.validate_min_length(field, length)
         MaxLength(length) -> field.validate_max_length(field, length)
         _ -> todo as "other rules have not been implemented yet"

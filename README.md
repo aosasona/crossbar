@@ -7,13 +7,13 @@
 
 ```gleam
 import gleam/io
-import crossbar.{int, max_size, min_size, required, validate}
+import crossbar.{int, max_value, min_value, required, validate}
 
 pub fn main() {
   int("age", 16)
   |> required
-  |> min_size(18.0)
-  |> max_size(21.0)
+  |> min_value(18.0)
+  |> max_value(21.0)
   |> validate
   |> io.debug
 }
@@ -21,7 +21,9 @@ pub fn main() {
 
 The snippet above will return the following error:
 
-> Error([FailedRule("age", "min_size", "must be at least 18.0")])
+```gleam
+Error([FailedRule("age", "min_value", "must be at least 18.0")])
+```
 
 ## Installation
 
