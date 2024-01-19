@@ -284,19 +284,22 @@ fn validate_field(
         Required -> field.validate_required(field)
         MinSize(size) -> field.validate_min_size(field, size)
         MaxSize(size) -> field.validate_max_size(field, size)
+        MinLength(length) -> field.validate_min_length(field, length)
+        MaxLength(length) -> field.validate_max_length(field, length)
         _ -> todo as "other rules have not been implemented yet"
       }
 
-      let new_errors = case validation_result {
-        True -> errors
-        False ->
-          append(errors, [
-            FailedRule(
-              name: field.name,
-              rule: rule_to_string(rule),
-              error: get_error_message(rule),
-            ),
-          ])
+      let new_errors = {
+        use <- bool.guard(when: validation_result, return: errors)
+
+        errors
+        |> append([
+          FailedRule(
+            name: field.name,
+            rule: rule_to_string(rule),
+            error: get_error_message(rule),
+          ),
+        ])
       }
 
       validate_field(field, other_rules, new_errors)

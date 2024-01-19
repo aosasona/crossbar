@@ -1,4 +1,5 @@
 import gleam/bit_array
+import gleam/bool
 import gleam/float
 import gleam/int
 import gleam/option.{type Option, None, Some}
@@ -86,6 +87,63 @@ pub fn validate_max_size(field: Field(_), max: Float) -> Bool {
   }
 
   float.max(max, value) == max
+}
+
+pub fn validate_min_length(field: Field(_), min_length: Int) -> Bool {
+  let field_length =
+    case field {
+      IntField(_, value, _) -> int.to_string(value)
+      FloatField(_, value, _) -> float.to_string(value)
+      StringField(_, value, _) -> value
+      BoolField(_, value, _) -> bool.to_string(value)
+      OptionalIntField(_, value, _) ->
+        case value {
+          Some(v) -> int.to_string(v)
+          None -> ""
+        }
+      OptionalFloatField(_, value, _) ->
+        case value {
+          Some(v) -> float.to_string(v)
+          None -> ""
+        }
+      OptionalStringField(_, value, _) -> option.unwrap(value, or: "")
+      OptionalBoolField(_, value, _) ->
+        option.unwrap(value, or: False)
+        |> bool.to_string
+    }
+    |> string.trim
+    |> string.length
+
+  field_length >= min_length
+}
+
+// TODO: test
+pub fn validate_max_length(field: Field(_), max_length: Int) -> Bool {
+  let field_length =
+    case field {
+      IntField(_, value, _) -> int.to_string(value)
+      FloatField(_, value, _) -> float.to_string(value)
+      StringField(_, value, _) -> value
+      BoolField(_, value, _) -> bool.to_string(value)
+      OptionalIntField(_, value, _) ->
+        case value {
+          Some(v) -> int.to_string(v)
+          None -> ""
+        }
+      OptionalFloatField(_, value, _) ->
+        case value {
+          Some(v) -> float.to_string(v)
+          None -> ""
+        }
+      OptionalStringField(_, value, _) -> option.unwrap(value, or: "")
+      OptionalBoolField(_, value, _) ->
+        option.unwrap(value, or: False)
+        |> bool.to_string
+    }
+    |> string.trim
+    |> string.length
+
+  field_length <= max_length
 }
 
 fn string_to_float_byte_size(value: String) -> Float {

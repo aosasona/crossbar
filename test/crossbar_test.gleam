@@ -3,8 +3,9 @@ import gleam/option.{None, Some}
 import gleeunit
 import gleeunit/should
 import crossbar.{
-  type CrossBarError, bool, float, int, max_size, min_size, optional_float,
-  optional_int, optional_string, required, string, validate,
+  type CrossBarError, bool, float, int, max_length, max_size, min_length,
+  min_size, optional_float, optional_int, optional_string, required, string,
+  validate,
 }
 
 pub fn main() {
@@ -277,4 +278,72 @@ pub fn max_size_test() {
   |> should.be_error
   |> extract_failed_rule_name
   |> should.equal(["max_size"])
+}
+
+// TODO: test more cases
+pub fn min_length_test() {
+  let should_fail = fn(v) {
+    v
+    |> should.be_error
+    |> extract_failed_rule_name
+    |> should.equal(["min_length"])
+  }
+
+  "hello"
+  |> string("hello - min_length", _)
+  |> min_length(5)
+  |> validate
+  |> should.be_ok
+
+  "hello"
+  |> string("hello - min_length", _)
+  |> min_length(6)
+  |> validate
+  |> should_fail
+
+  "   "
+  |> string("space is not a valid part of the string", _)
+  |> min_length(1)
+  |> validate
+  |> should_fail
+
+  "hell  "
+  |> string("space is not a valid part of the string - hello", _)
+  |> min_length(5)
+  |> validate
+  |> should_fail
+
+  245
+  |> int("245 - min_length", _)
+  |> min_length(3)
+  |> validate
+  |> should.be_ok
+
+  245
+  |> int("245 - min_length (4)", _)
+  |> min_length(4)
+  |> validate
+  |> should.be_error
+}
+
+// TODO: test more cases
+pub fn max_length_test() {
+  let should_fail = fn(v) {
+    v
+    |> should.be_error
+    |> extract_failed_rule_name
+    |> should.equal(["max_length"])
+  }
+
+  "hello"
+  |> string("hello - max_length_pass", _)
+  |> max_length(5)
+  |> validate
+  |> should.be_ok
+
+  "hello"
+  |> string("hello - max_length_fail", _)
+  |> max_length(4)
+  |> validate
+  |> should_fail
 }
