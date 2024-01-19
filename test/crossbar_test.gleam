@@ -296,7 +296,7 @@ pub fn min_length_test() {
   |> should.be_ok
 
   "hello"
-  |> string("hello - min_length", _)
+  |> string("hello - min_length - 6", _)
   |> min_length(6)
   |> validate
   |> should_fail
@@ -346,4 +346,19 @@ pub fn max_length_test() {
   |> max_length(4)
   |> validate
   |> should_fail
+
+  "   "
+  |> string(
+    "space is not a valid part of the string so should evaluate to nothing",
+    _,
+  )
+  |> max_length(1)
+  |> validate
+  |> should.be_ok
+
+  "hell  "
+  |> string("space is not a valid part of the string - hell", _)
+  |> max_length(5)
+  |> validate
+  |> should.be_ok
 }
