@@ -1,15 +1,13 @@
 import crossbar/internal/cast
 import crossbar/internal/field.{
   type Field, type Rule, BoolField, Eq, FloatField, IntField, MaxLength, MaxSize,
-  MinLength, MinSize, NotEq, OptionalBoolField, OptionalFloatField,
-  OptionalIntField, OptionalStringField, Regex, Required, StringField,
-  UncompiledRegex, ValidatorFunction,
+  MinLength, MinSize, NotEq, Regex, Required, StringField, UncompiledRegex,
+  ValidatorFunction,
 }
 import gleam/bool
 import gleam/float
 import gleam/int
 import gleam/list.{append}
-import gleam/option.{type Option}
 import gleam/regex
 
 /// The `CrossBarError` type is used to represent errors that occur during validation.
@@ -38,35 +36,6 @@ pub fn string(name name: String, value value: String) -> Field(String) {
 /// Creates a new `Bool` field with the given name and value
 pub fn bool(name name: String, value value: Bool) -> Field(Bool) {
   BoolField(name, value, [])
-}
-
-/// Creates a new `Option(Int)` field with the given name and value
-pub fn optional_int(name name: String, value value: Option(Int)) -> Field(Int) {
-  OptionalIntField(name, value, [])
-}
-
-/// Creates a new `Option(Float)` field with the given name and value
-pub fn optional_float(
-  name name: String,
-  value value: Option(Float),
-) -> Field(Float) {
-  OptionalFloatField(name, value, [])
-}
-
-/// Creates a new `Option(String)` field with the given name and value
-pub fn optional_string(
-  name name: String,
-  value value: Option(String),
-) -> Field(String) {
-  OptionalStringField(name, value, [])
-}
-
-/// Creates a new `Option(Bool)` field with the given name and value
-pub fn optional_bool(
-  name name: String,
-  value value: Option(Bool),
-) -> Field(Bool) {
-  OptionalBoolField(name, value, [])
 }
 
 /// Returns the string representation of a rule - this is internally used for error states
@@ -133,19 +102,16 @@ fn append_rule(field: Field(a), rule: Rule(a)) -> Field(a) {
 
     BoolField(name, value, rules) ->
       BoolField(name, value, append(rules, [rule]))
-
-    OptionalIntField(name, value, rules) ->
-      OptionalIntField(name, value, append(rules, [rule]))
-
-    OptionalFloatField(name, value, rules) ->
-      OptionalFloatField(name, value, append(rules, [rule]))
-
-    OptionalStringField(name, value, rules) ->
-      OptionalStringField(name, value, append(rules, [rule]))
-
-    OptionalBoolField(name, value, rules) ->
-      OptionalBoolField(name, value, append(rules, [rule]))
   }
+}
+
+/// Convenient function to convert an `Int` to a `Float`
+pub fn to_float(field: Field(Int)) -> Field(Float) {
+  let assert IntField(name, value, []) = field
+
+  value
+  |> int.to_float
+  |> float(name, _)
 }
 
 /// The required rule makes sure that the field is not empty, this is the expected behaviour in the following cases:
@@ -153,20 +119,23 @@ fn append_rule(field: Field(a), rule: Rule(a)) -> Field(a) {
 /// > `Float`: **0.0** is also considered empty
 /// > `String`: "" (or anything that trims down to that) is considered empty
 /// > `Bool`: this isn't really a thing, but it's here for completeness sake and it will always return true, because a bool is never empty (unless it is wrapped in an option)
-/// > `Option`: this is considered empty if it is `None`
 pub fn required(field field: Field(_)) -> Field(_) {
   append_rule(field, Required)
 }
 
 /// The `min_value` rule makes sure that the field is at least the given (byte where it applies) size.
 /// > Strings are counted in bytes (as bit arrays), `Int`s and `Float`s are evaluated directly, `Bool`s are treated as their binary equivalent (0 or 1).
-pub fn min_value(field field: Field(_), size size: Float) -> Field(_) {
+///
+/// NOTE: This function has been momentarily restricted to `Float` fields, because it's not very useful for other types, open an issue if you ever find a use for it. There is also a `to_float` function to transform int fields to float fields
+pub fn min_value(field field: Field(Float), size size: Float) -> Field(_) {
   append_rule(field, MinSize(size))
 }
 
 /// The `max_value` rule makes sure that the field is at most the given (byte) size.
 /// > Strings are counted in bytes (as bit arrays), `Int`s and `Float`s are evaluated directly, `Bool`s are treated as their binary equivalent (0 or 1).
-pub fn max_value(field field: Field(_), size size: Float) -> Field(_) {
+///
+/// NOTE: This function has been momentarily restricted to `Float` fields, because it's not very useful for other types, open an issue if you ever find a use for it. There is also a `to_float` function to transform int fields to float fields
+pub fn max_value(field field: Field(Float), size size: Float) -> Field(_) {
   append_rule(field, MaxSize(size))
 }
 
@@ -175,8 +144,9 @@ pub fn max_value(field field: Field(_), size size: Float) -> Field(_) {
 /// > `Float`: the length of the string representation of the number, this isn't very useful to you, but it's here for completeness sake. You probably want to use `min_value` instead.
 /// > `String`: the length of the string is evaluated directly
 /// > `Bool`: this also isn't very useful to you, but it's here for completeness sake.
-/// > `Option`: this is considered empty if it is `None`, the Some values are evaluated as their respective types.
-pub fn min_length(field field: Field(_), length length: Int) -> Field(_) {
+///
+/// NOTE: This function has been momentarily restricted to `String` fields, because it's not very useful for other types, open an issue if you ever find a use for it.
+pub fn min_length(field field: Field(String), length length: Int) -> Field(_) {
   append_rule(field, MinLength(length))
 }
 
@@ -185,17 +155,18 @@ pub fn min_length(field field: Field(_), length length: Int) -> Field(_) {
 /// > `Float`: the length of the string representation of the number, this also isn't very useful to you, but it's here for completeness sake. You probably want to use `max_value` instead.
 /// > `String`: the length of the string is evaluated directly
 /// > `Bool`: this also isn't very useful to you, but it's here for completeness sake.
-/// > `Option`: this is considered empty if it is `None`, the Some values are evaluated as their respective types.
-pub fn max_length(field field: Field(_), length length: Int) -> Field(_) {
+///
+/// NOTE: This function has been momentarily restricted to `String` fields, because it's not very useful for other types, open an issue if you ever find a use for it.
+pub fn max_length(field field: Field(String), length length: Int) -> Field(_) {
   append_rule(field, MaxLength(length))
 }
 
-/// The `eq` rule makes sure that the field is equal to the given value, strings are compared securely bit by bit, so this is safe to use for passwords, other types are compared directly.
+/// The `eq` rule makes sure that the field is equal to the given value, strings are NOT compared securely, so this is NOT safe to use for passwords, other types are compared directly.
 pub fn eq(field field: Field(a), name name: String, value value: a) -> Field(a) {
   append_rule(field, Eq(name, value))
 }
 
-/// The `not_eq` rule makes sure that the field is not equal to the given value, strings are compared securely bit by bit, so this is safe to use for passwords, other types are compared directly.
+/// The `not_eq` rule makes sure that the field is not equal to the given value, strings are NOT compared securely, so this is NOT safe to use for passwords, other types are compared directly.
 pub fn not_eq(
   field field: Field(a),
   name name: String,

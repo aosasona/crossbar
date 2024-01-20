@@ -2,7 +2,6 @@ import gleam/bit_array
 import gleam/bool
 import gleam/float
 import gleam/int
-import gleam/option.{type Option, None, Some}
 import gleam/regex.{type Regex}
 import gleam/string
 
@@ -26,10 +25,6 @@ pub type Field(a) {
   FloatField(name: String, value: Float, rules: List(Rule(a)))
   StringField(name: String, value: String, rules: List(Rule(a)))
   BoolField(name: String, value: Bool, rules: List(Rule(a)))
-  OptionalIntField(name: String, value: Option(Int), rules: List(Rule(a)))
-  OptionalFloatField(name: String, value: Option(Float), rules: List(Rule(a)))
-  OptionalStringField(name: String, value: Option(String), rules: List(Rule(a)))
-  OptionalBoolField(name: String, value: Option(Bool), rules: List(Rule(a)))
 }
 
 pub fn validate_required(field: Field(_)) -> Bool {
@@ -38,16 +33,6 @@ pub fn validate_required(field: Field(_)) -> Bool {
     FloatField(_, value, _) -> value != 0.0
     StringField(_, value, _) -> string.trim(value) != ""
     BoolField(_, _, _) -> True
-    OptionalIntField(_, value, _) ->
-      option.is_some(value) && option.unwrap(value, or: 0) != 0
-    OptionalFloatField(_, value, _) ->
-      option.is_some(value) && option.unwrap(value, or: 0.0) != 0.0
-    OptionalStringField(_, value, _) ->
-      case value {
-        Some(v) -> string.trim(v) != ""
-        None -> False
-      }
-    OptionalBoolField(_, value, _) -> option.is_some(value)
   }
 }
 
@@ -57,14 +42,6 @@ pub fn validate_min_value(field: Field(_), min: Float) -> Bool {
     FloatField(_, value, _) -> value
     StringField(_, value, _) -> string_to_float_byte_size(value)
     BoolField(_, value, _) -> bool_to_float(value)
-    OptionalIntField(_, value, _) -> int.to_float(option.unwrap(value, or: 0))
-    OptionalFloatField(_, value, _) -> option.unwrap(value, or: 0.0)
-    OptionalStringField(_, value, _) ->
-      option.unwrap(value, or: "")
-      |> string_to_float_byte_size
-    OptionalBoolField(_, value, _) ->
-      option.unwrap(value, or: False)
-      |> bool_to_float
   }
 
   float.min(min, value) == min
@@ -76,14 +53,6 @@ pub fn validate_max_value(field: Field(_), max: Float) -> Bool {
     FloatField(_, value, _) -> value
     StringField(_, value, _) -> string_to_float_byte_size(value)
     BoolField(_, value, _) -> bool_to_float(value)
-    OptionalIntField(_, value, _) -> int.to_float(option.unwrap(value, or: 0))
-    OptionalFloatField(_, value, _) -> option.unwrap(value, or: 0.0)
-    OptionalStringField(_, value, _) ->
-      option.unwrap(value, or: "")
-      |> string_to_float_byte_size
-    OptionalBoolField(_, value, _) ->
-      option.unwrap(value, or: False)
-      |> bool_to_float
   }
 
   float.max(max, value) == max
@@ -96,20 +65,6 @@ pub fn validate_min_length(field: Field(_), min_length: Int) -> Bool {
       FloatField(_, value, _) -> float.to_string(value)
       StringField(_, value, _) -> value
       BoolField(_, value, _) -> bool.to_string(value)
-      OptionalIntField(_, value, _) ->
-        case value {
-          Some(v) -> int.to_string(v)
-          None -> ""
-        }
-      OptionalFloatField(_, value, _) ->
-        case value {
-          Some(v) -> float.to_string(v)
-          None -> ""
-        }
-      OptionalStringField(_, value, _) -> option.unwrap(value, or: "")
-      OptionalBoolField(_, value, _) ->
-        option.unwrap(value, or: False)
-        |> bool.to_string
     }
     |> string.trim
     |> string.length
@@ -125,25 +80,71 @@ pub fn validate_max_length(field: Field(_), max_length: Int) -> Bool {
       FloatField(_, value, _) -> float.to_string(value)
       StringField(_, value, _) -> value
       BoolField(_, value, _) -> bool.to_string(value)
-      OptionalIntField(_, value, _) ->
-        case value {
-          Some(v) -> int.to_string(v)
-          None -> ""
-        }
-      OptionalFloatField(_, value, _) ->
-        case value {
-          Some(v) -> float.to_string(v)
-          None -> ""
-        }
-      OptionalStringField(_, value, _) -> option.unwrap(value, or: "")
-      OptionalBoolField(_, value, _) ->
-        option.unwrap(value, or: False)
-        |> bool.to_string
     }
     |> string.trim
     |> string.length
 
   field_length <= max_length
+}
+
+pub fn validate_eq(field: Field(a), name: String, value: a) -> Bool {
+  case field {
+    IntField(_, _, _) -> todo
+    FloatField(_, _, _) -> todo
+    StringField(_, _, _) -> todo
+    BoolField(_, _, _) -> todo
+  }
+}
+
+pub fn validate_not_eq(field: Field(a), name: String, value: a) -> Bool {
+  case field {
+    IntField(_, _, _) -> todo
+    FloatField(_, _, _) -> todo
+    StringField(_, _, _) -> todo
+    BoolField(_, _, _) -> todo
+  }
+}
+
+pub fn validate_uncompiled_regex(
+  field: Field(_),
+  name: String,
+  regex: String,
+  error: String,
+) -> Bool {
+  case field {
+    IntField(_, _, _) -> todo
+    FloatField(_, _, _) -> todo
+    StringField(_, _, _) -> todo
+    BoolField(_, _, _) -> todo
+  }
+}
+
+pub fn validate_regex(
+  field: Field(_),
+  name: String,
+  regex: Regex,
+  error: String,
+) -> Bool {
+  case field {
+    IntField(_, _, _) -> todo
+    FloatField(_, _, _) -> todo
+    StringField(_, _, _) -> todo
+    BoolField(_, _, _) -> todo
+  }
+}
+
+pub fn use_validator_function(
+  field: Field(_),
+  name: String,
+  validator: fn(a) -> Bool,
+  error: String,
+) -> Bool {
+  case field {
+    IntField(_, _, _) -> todo
+    FloatField(_, _, _) -> todo
+    StringField(_, _, _) -> todo
+    BoolField(_, _, _) -> todo
+  }
 }
 
 fn string_to_float_byte_size(value: String) -> Float {

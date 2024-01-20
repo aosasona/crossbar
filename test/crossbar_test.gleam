@@ -1,11 +1,9 @@
 import gleam/list
-import gleam/option.{None, Some}
 import gleeunit
 import gleeunit/should
 import crossbar.{
   type CrossBarError, bool, float, int, max_length, max_value, min_length,
-  min_value, optional_float, optional_int, optional_string, required, string,
-  validate,
+  min_value, required, string, to_float, validate,
 }
 
 pub fn main() {
@@ -67,31 +65,6 @@ pub fn required_test() {
   |> extract_failed_rule_name
   |> should.equal(["required"])
 
-  // Some is not empty if the content is not empty
-  Some("hello")
-  |> optional_string("Some is ok if content is not empty", _)
-  |> required
-  |> validate
-  |> should.be_ok
-
-  // Some is empty if the content is empty
-  Some("")
-  |> optional_string("Some is not ok if content is empty", _)
-  |> required
-  |> validate
-  |> should.be_error
-  |> extract_failed_rule_name
-  |> should.equal(["required"])
-
-  // None is empty
-  None
-  |> optional_string("None is not ok", _)
-  |> required
-  |> validate
-  |> should.be_error
-  |> extract_failed_rule_name
-  |> should.equal(["required"])
-
   // Bools are not empty by default anyway
   True
   |> bool("True is ok", _)
@@ -109,49 +82,15 @@ pub fn required_test() {
 pub fn min_value_test() {
   5
   |> int("5 is greater than 2.0", _)
+  |> to_float
   |> min_value(2.0)
   |> validate
   |> should.be_ok
 
   5
   |> int("5.1 is greater than 5", _)
+  |> to_float
   |> min_value(5.1)
-  |> validate
-  |> should.be_error
-  |> extract_failed_rule_name
-  |> should.equal(["min_value"])
-
-  Some(5)
-  |> optional_int("Some(5) is greater than 2.0", _)
-  |> min_value(2.0)
-  |> validate
-  |> should.be_ok
-
-  None
-  |> optional_int("None is not greater than 2.0", _)
-  |> min_value(2.0)
-  |> validate
-  |> should.be_error
-  |> extract_failed_rule_name
-  |> should.equal(["min_value"])
-
-  Some(5.5)
-  |> optional_float("Some(5.5) is greater than 2.0", _)
-  |> min_value(2.0)
-  |> validate
-  |> should.be_ok
-
-  Some(5.5)
-  |> optional_float("Some(5.5) is NOT greater than 5.6", _)
-  |> min_value(5.6)
-  |> validate
-  |> should.be_error
-  |> extract_failed_rule_name
-  |> should.equal(["min_value"])
-
-  None
-  |> optional_float("None is not greater than 2.0", _)
-  |> min_value(2.0)
   |> validate
   |> should.be_error
   |> extract_failed_rule_name
@@ -168,116 +107,22 @@ pub fn min_value_test() {
   |> min_value(5.1)
   |> validate
   |> should.be_ok
-
-  "hello"
-  |> string("hello is 5 bytes", _)
-  |> min_value(5.0)
-  |> validate
-  |> should.be_ok
-
-  "hello   "
-  |> string("hello with space is still not less than 5 bytes", _)
-  |> min_value(5.0)
-  |> validate
-  |> should.be_ok
-
-  "hello"
-  |> string("hello is not 5.1 bytes", _)
-  |> min_value(5.1)
-  |> validate
-  |> should.be_error
-  |> extract_failed_rule_name
-  |> should.equal(["min_value"])
-
-  True
-  |> bool("Bools are just 1 or 0", _)
-  |> min_value(5.0)
-  |> validate
-  |> should.be_error
-  |> extract_failed_rule_name
-  |> should.equal(["min_value"])
-
-  False
-  |> bool("Bools are just 1 or 0", _)
-  |> min_value(5.0)
-  |> validate
-  |> should.be_error
-  |> extract_failed_rule_name
-  |> should.equal(["min_value"])
 }
 
 pub fn max_value_test() {
   5
   |> int("5 is less than 6.0", _)
+  |> to_float
   |> max_value(6.0)
   |> validate
   |> should.be_ok
 
   5
   |> int("5 is less than 5.1", _)
+  |> to_float
   |> max_value(5.1)
   |> validate
   |> should.be_ok
-
-  Some(5)
-  |> optional_int("Some(5) is less than 6.0", _)
-  |> max_value(6.0)
-  |> validate
-  |> should.be_ok
-
-  None
-  |> optional_int("None is less than 6.0", _)
-  |> max_value(6.0)
-  |> validate
-  |> should.be_ok
-
-  Some(5.5)
-  |> optional_float("Some(5.5) is less than 6.0", _)
-  |> max_value(6.0)
-  |> validate
-  |> should.be_ok
-
-  Some(5.5)
-  |> optional_float("Some(5.5) is less than 5.6", _)
-  |> max_value(5.6)
-  |> validate
-  |> should.be_ok
-
-  Some(5.6)
-  |> optional_float("Some(5.6) is equal to 5.6", _)
-  |> max_value(5.6)
-  |> validate
-  |> should.be_ok
-
-  Some(5.7)
-  |> optional_float("Some(5.7) is NOT less than 5.6", _)
-  |> max_value(5.6)
-  |> validate
-  |> should.be_error
-  |> extract_failed_rule_name
-  |> should.equal(["max_value"])
-
-  "hello"
-  |> string("hello is 5 bytes", _)
-  |> max_value(5.0)
-  |> validate
-  |> should.be_ok
-
-  "hello   "
-  |> string("hello with space is greater than 5 bytes", _)
-  |> max_value(5.0)
-  |> validate
-  |> should.be_error
-  |> extract_failed_rule_name
-  |> should.equal(["max_value"])
-
-  "hello"
-  |> string("hello is greater than 4 bytes", _)
-  |> max_value(4.0)
-  |> validate
-  |> should.be_error
-  |> extract_failed_rule_name
-  |> should.equal(["max_value"])
 }
 
 // TODO: test more cases
@@ -312,18 +157,6 @@ pub fn min_length_test() {
   |> min_length(5)
   |> validate
   |> should_fail
-
-  245
-  |> int("245 - min_length", _)
-  |> min_length(3)
-  |> validate
-  |> should.be_ok
-
-  245
-  |> int("245 - min_length (4)", _)
-  |> min_length(4)
-  |> validate
-  |> should.be_error
 }
 
 // TODO: test more cases
