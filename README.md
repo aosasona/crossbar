@@ -7,11 +7,12 @@
 
 ```gleam
 import gleam/io
-import crossbar.{int, max_value, min_value, required, validate}
+import crossbar.{int, max_value, min_value, required, to_float, validate}
 
 pub fn main() {
   int("age", 16)
   |> required
+  |> to_float
   |> min_value(18.0)
   |> max_value(21.0)
   |> validate

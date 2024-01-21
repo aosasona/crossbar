@@ -195,3 +195,7 @@ pub fn max_length_test() {
   |> validate
   |> should.be_ok
 }
+
+pub fn eq_test() {
+  todo
+}

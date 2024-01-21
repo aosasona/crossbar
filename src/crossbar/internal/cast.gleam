@@ -14,7 +14,7 @@ fn cast(from: b, to: dynamic.Decoder(a)) -> Result(a, List(dynamic.DecodeError))
   }
 }
 
-// These are potentially unsafe but I will try to restrict the data that will ever make it here anyway
+// These are unsafe as they create defaults on error instead of bubbling up the errors but we will try to restrict the data that will ever make it here with the type system anyway
 pub fn int(from: b) -> Int {
   cast(from, dynamic.int)
   |> result.unwrap(0)

@@ -1,3 +1,4 @@
+import crossbar/internal/cast
 import gleam/bit_array
 import gleam/bool
 import gleam/float
@@ -72,7 +73,6 @@ pub fn validate_min_length(field: Field(_), min_length: Int) -> Bool {
   field_length >= min_length
 }
 
-// TODO: test
 pub fn validate_max_length(field: Field(_), max_length: Int) -> Bool {
   let field_length =
     case field {
@@ -87,16 +87,16 @@ pub fn validate_max_length(field: Field(_), max_length: Int) -> Bool {
   field_length <= max_length
 }
 
-pub fn validate_eq(field: Field(a), name: String, value: a) -> Bool {
+pub fn validate_eq(field: Field(a), to other_value: a) -> Bool {
   case field {
-    IntField(_, _, _) -> todo
-    FloatField(_, _, _) -> todo
-    StringField(_, _, _) -> todo
-    BoolField(_, _, _) -> todo
+    IntField(_, value, _) -> value == cast.int(other_value)
+    FloatField(_, value, _) -> value == cast.float(other_value)
+    StringField(_, value, _) -> value == cast.string(other_value)
+    BoolField(_, value, _) -> value == cast.bool(other_value)
   }
 }
 
-pub fn validate_not_eq(field: Field(a), name: String, value: a) -> Bool {
+pub fn validate_not_eq(field: Field(a), to other_value: a) -> Bool {
   case field {
     IntField(_, _, _) -> todo
     FloatField(_, _, _) -> todo
