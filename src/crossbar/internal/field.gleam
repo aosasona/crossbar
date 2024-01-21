@@ -2,6 +2,7 @@ import crossbar/internal/cast
 import gleam/bit_array
 import gleam/bool
 import gleam/float
+import gleam/order
 import gleam/int
 import gleam/regex.{type Regex}
 import gleam/string
@@ -89,19 +90,27 @@ pub fn validate_max_length(field: Field(_), max_length: Int) -> Bool {
 
 pub fn validate_eq(field: Field(a), to other_value: a) -> Bool {
   case field {
-    IntField(_, value, _) -> value == cast.int(other_value)
-    FloatField(_, value, _) -> value == cast.float(other_value)
-    StringField(_, value, _) -> value == cast.string(other_value)
-    BoolField(_, value, _) -> value == cast.bool(other_value)
+    IntField(_, value, _) ->
+      int.compare(value, cast.int(other_value)) == order.Eq
+    FloatField(_, value, _) ->
+      float.compare(value, cast.float(other_value)) == order.Eq
+    StringField(_, value, _) ->
+      string.compare(value, cast.string(other_value)) == order.Eq
+    BoolField(_, value, _) ->
+      bool.compare(value, cast.bool(other_value)) == order.Eq
   }
 }
 
 pub fn validate_not_eq(field: Field(a), to other_value: a) -> Bool {
   case field {
-    IntField(_, _, _) -> todo
-    FloatField(_, _, _) -> todo
-    StringField(_, _, _) -> todo
-    BoolField(_, _, _) -> todo
+    IntField(_, value, _) ->
+      int.compare(value, cast.int(other_value)) != order.Eq
+    FloatField(_, value, _) ->
+      float.compare(value, cast.float(other_value)) != order.Eq
+    StringField(_, value, _) ->
+      string.compare(value, cast.string(other_value)) != order.Eq
+    BoolField(_, value, _) ->
+      bool.compare(value, cast.bool(other_value)) != order.Eq
   }
 }
 

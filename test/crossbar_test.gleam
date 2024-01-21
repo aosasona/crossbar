@@ -2,8 +2,8 @@ import gleam/list
 import gleeunit
 import gleeunit/should
 import crossbar.{
-  type CrossBarError, bool, float, int, max_length, max_value, min_length,
-  min_value, required, string, to_float, validate,
+  type CrossBarError, bool, eq, float, int, max_length, max_value, min_length,
+  min_value, not_eq, required, string, to_float, validate,
 }
 
 pub fn main() {
@@ -197,5 +197,41 @@ pub fn max_length_test() {
 }
 
 pub fn eq_test() {
-  todo
+  "hello"
+  |> string("hello eq hello - ok", _)
+  |> eq("other_hello", "hello")
+  |> validate
+  |> should.be_ok
+
+  "hella"
+  |> string("hella eq hello - error", _)
+  |> eq("other_hello", "hello")
+  |> validate
+  |> should.be_error
+
+  "hello "
+  |> string("hello with space eq hello - error", _)
+  |> eq("other_hello", "hello")
+  |> validate
+  |> should.be_error
+}
+
+pub fn not_eq_test() {
+  "hello"
+  |> string("hello not_eq hello - error", _)
+  |> not_eq("other_hello", "hello")
+  |> validate
+  |> should.be_error
+
+  "hella"
+  |> string("hella not_eq hello - ok", _)
+  |> not_eq("other_hello", "hello")
+  |> validate
+  |> should.be_ok
+
+  "hello "
+  |> string("hello with space not_eq hello - ok", _)
+  |> not_eq("other_hello", "hello")
+  |> validate
+  |> should.be_ok
 }

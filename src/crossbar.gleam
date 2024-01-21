@@ -64,7 +64,7 @@ pub fn rule_to_string(rule: Rule(_)) -> String {
   }
 }
 
-pub fn get_error_message(rule: Rule(_)) -> String {
+pub fn rule_to_error_string(rule: Rule(_)) -> String {
   case rule {
     Required -> "is required"
     MinSize(v) -> "must be at least " <> float.to_string(v)
@@ -105,13 +105,50 @@ fn append_rule(field: Field(a), rule: Rule(a)) -> Field(a) {
   }
 }
 
-/// Convenient function to convert an `Int` to a `Float`
+fn int_rules_to_float_rules(rules: List(Rule(Int))) -> List(Rule(Float)) {
+  rules
+  |> list.map(fn(rule) {
+    case rule {
+      Required -> Required
+      MinSize(v) -> MinSize(v)
+      MaxSize(v) -> MaxSize(v)
+      MinLength(v) -> MinLength(v)
+      MaxLength(v) -> MaxLength(v)
+      Eq(name, value) -> Eq(name, int.to_float(value))
+      NotEq(name, value) -> NotEq(name, int.to_float(value))
+      UncompiledRegex(name, regex, error) -> UncompiledRegex(name, regex, error)
+      Regex(name, regex, error) -> Regex(name, regex, error)
+
+      // Ideally, the type system will prevent this from happening, but just in case the user refuses to read the documentation for `to_float`, we'll handle it here
+      ValidatorFunction(name, original_validator, error) ->
+        ValidatorFunction(
+          name,
+          fn(v: Float) {
+            v
+            |> float.round
+            |> original_validator
+          },
+          error,
+        )
+    }
+  })
+}
+
+/// Convenient function to convert an `Int` to a `Float`, you should use this BEFORE applying any rules.
+///
+/// ## Example
+///
+/// ```gleam
+/// int("age", 6)
+/// |> to_float
+/// |> min_value(5.0)
+/// ```
 pub fn to_float(field: Field(Int)) -> Field(Float) {
-  let assert IntField(name, value, []) = field
+  let assert IntField(name, value, rules) = field
 
   value
   |> int.to_float
-  |> float(name, _)
+  |> FloatField(name, _, int_rules_to_float_rules(rules))
 }
 
 /// The required rule makes sure that the field is not empty, this is the expected behaviour in the following cases:
@@ -126,7 +163,7 @@ pub fn required(field field: Field(_)) -> Field(_) {
 /// The `min_value` rule makes sure that the field is at least the given (byte where it applies) size.
 /// > Strings are counted in bytes (as bit arrays), `Int`s and `Float`s are evaluated directly, `Bool`s are treated as their binary equivalent (0 or 1).
 ///
-/// NOTE: This function has been momentarily restricted to `Float` fields, because it's not very useful for other types, open an issue if you ever find a use for it. There is also a `to_float` function to transform int fields to float fields
+/// NOTE: This function has been momentarily restricted to `Float` fields, because it's not very useful for other types, open an issue if you ever find a use for it. There is also a `to_float` function to transform int fields to float fields (meant to be used before you add any rules)
 pub fn min_value(field field: Field(Float), size size: Float) -> Field(_) {
   append_rule(field, MinSize(size))
 }
@@ -134,7 +171,7 @@ pub fn min_value(field field: Field(Float), size size: Float) -> Field(_) {
 /// The `max_value` rule makes sure that the field is at most the given (byte) size.
 /// > Strings are counted in bytes (as bit arrays), `Int`s and `Float`s are evaluated directly, `Bool`s are treated as their binary equivalent (0 or 1).
 ///
-/// NOTE: This function has been momentarily restricted to `Float` fields, because it's not very useful for other types, open an issue if you ever find a use for it. There is also a `to_float` function to transform int fields to float fields
+/// NOTE: This function has been momentarily restricted to `Float` fields, because it's not very useful for other types, open an issue if you ever find a use for it. There is also a `to_float` function to transform int fields to float fields (meant to be used before you add any rules)
 pub fn max_value(field field: Field(Float), size size: Float) -> Field(_) {
   append_rule(field, MaxSize(size))
 }
@@ -257,6 +294,8 @@ fn validate_field(
         MaxSize(size) -> field.validate_max_value(field, size)
         MinLength(length) -> field.validate_min_length(field, length)
         MaxLength(length) -> field.validate_max_length(field, length)
+        Eq(_, value) -> field.validate_eq(field, value)
+        NotEq(_, value) -> field.validate_not_eq(field, value)
         _ -> todo as "other rules have not been implemented yet"
       }
 
@@ -268,7 +307,7 @@ fn validate_field(
           FailedRule(
             name: field.name,
             rule: rule_to_string(rule),
-            error: get_error_message(rule),
+            error: rule_to_error_string(rule),
           ),
         ])
       }
