@@ -1,9 +1,12 @@
 import gleam/list
 import gleeunit
 import gleeunit/should
+import gleam/io
+import gleam/regex
+import gleam/string
 import crossbar.{
   type CrossBarError, bool, eq, float, int, max_length, max_value, min_length,
-  min_value, not_eq, required, string, to_float, validate,
+  min_value, not_eq, required, string, to_float, validate, with_validator,
 }
 
 pub fn main() {
@@ -12,6 +15,59 @@ pub fn main() {
 
 fn extract_failed_rule_name(errors: List(CrossBarError)) -> List(String) {
   list.map(errors, with: fn(error) { error.rule })
+}
+
+pub fn composite_test() {
+  string("first_name", "John")
+  |> required
+  |> min_length(3)
+  |> max_length(10)
+  |> validate
+  |> should.be_ok
+
+  string("first_name", "John")
+  |> required
+  |> max_length(3)
+  |> validate
+  |> should.be_error
+
+  string("first_name", "")
+  |> required
+  |> min_length(3)
+  |> max_length(10)
+  |> not_eq("empty string", "")
+  |> validate
+  |> should.be_error
+
+  int("age", 18)
+  |> to_float
+  |> required
+  |> min_value(18.0)
+  |> max_value(21.0)
+  |> validate
+  |> should.be_ok
+
+  int("age", 16)
+  |> to_float
+  |> required
+  |> min_value(18.0)
+  |> max_value(21.0)
+  |> validate
+  |> should.be_error
+
+  float("age", 18.0)
+  |> required
+  |> min_value(18.0)
+  |> max_value(21.0)
+  |> validate
+  |> should.be_ok
+
+  float("age", 0.0)
+  |> required
+  |> min_value(18.0)
+  |> max_value(21.0)
+  |> validate
+  |> should.be_error
 }
 
 pub fn required_test() {
@@ -234,4 +290,127 @@ pub fn not_eq_test() {
   |> not_eq("other_hello", "hello")
   |> validate
   |> should.be_ok
+}
+
+pub fn regex_test() {
+  let assert Ok(hello123regex) = regex.from_string("^[a-p0-9]+$")
+
+  "hello123"
+  |> string("hello123 regex - a to p", _)
+  |> crossbar.regex(
+    "6 in total, alphanum",
+    hello123regex,
+    "expects to match pattern ^[a-p0-9]+$",
+  )
+  |> validate
+  |> should.be_ok
+
+  "zingo123"
+  |> string("zingo123 regex - a to p", _)
+  |> crossbar.regex(
+    "6 in total, alphanum",
+    hello123regex,
+    "expects to match pattern ^[a-p0-9]+$",
+  )
+  |> validate
+  |> should.be_error
+
+  "hello1234"
+  |> string("hello1234 regex - a to p", _)
+  |> crossbar.regex(
+    "6 in total, alphanum",
+    hello123regex,
+    "expects to match pattern ^[a-p0-9]+$",
+  )
+  |> validate
+  |> should.be_ok
+
+  "this is weird"
+  |> string("this is weird regex - a to p", _)
+  |> crossbar.regex(
+    "6 in total, alphanum",
+    hello123regex,
+    "expects to match pattern ^[a-p0-9]+$",
+  )
+  |> validate
+  |> should.be_error
+}
+
+pub fn validator_fn_test() {
+  let is_even = fn(v) { v % 2 == 0 }
+  let is_odd = fn(v) { v % 2 != 0 }
+  let is_hello = fn(v) { v == "hello" }
+  let starts_with_hello = fn(v) {
+    let v = string.lowercase(v)
+    case v {
+      "hello" <> _ -> True
+      _ -> False
+    }
+  }
+
+  2
+  |> int("2 is even", _)
+  |> with_validator("is_even", is_even, "must be an even number")
+  |> validate
+  |> should.be_ok
+
+  5
+  |> int("5 is not even", _)
+  |> with_validator("is_even", is_even, "must be an even number")
+  |> validate
+  |> should.be_error
+
+  3
+  |> int("3 is odd", _)
+  |> with_validator("is_odd", is_odd, "must be an odd number")
+  |> validate
+  |> should.be_ok
+
+  4
+  |> int("4 is not odd", _)
+  |> with_validator("is_odd", is_odd, "must be an odd number")
+  |> validate
+  |> should.be_error
+
+  "hello"
+  |> string("hello is equal to hello", _)
+  |> with_validator("is_hello", is_hello, "must be hello")
+  |> validate
+  |> should.be_ok
+
+  "hello "
+  |> string("hello is not equal to hello", _)
+  |> with_validator("is_hello", is_hello, "must be hello")
+  |> validate
+  |> should.be_error
+
+  "hello"
+  |> string("hello starts with hello", _)
+  |> with_validator(
+    "starts_with_hello",
+    starts_with_hello,
+    "must start with hello",
+  )
+  |> validate
+  |> should.be_ok
+
+  "Hello, world!"
+  |> string("hello, world! starts with hello", _)
+  |> with_validator(
+    "starts_with_hello",
+    starts_with_hello,
+    "must start with hello",
+  )
+  |> validate
+  |> should.be_ok
+
+  "Hell yes!"
+  |> string("hell yes! does not start with hello", _)
+  |> with_validator(
+    "starts_with_hello",
+    starts_with_hello,
+    "must start with hello",
+  )
+  |> validate
+  |> should.be_error
 }

@@ -1,6 +1,7 @@
 import crossbar/internal/cast
 import gleam/bit_array
 import gleam/bool
+import gleam/dynamic
 import gleam/float
 import gleam/order
 import gleam/int
@@ -16,7 +17,6 @@ pub type Rule(a) {
   MaxLength(Int)
   Eq(name: String, value: a)
   NotEq(name: String, value: a)
-  UncompiledRegex(name: String, regex: String, error: String)
   Regex(name: String, regex: Regex, error: String)
   ValidatorFunction(name: String, validator: fn(a) -> Bool, error: String)
 }
@@ -114,46 +114,29 @@ pub fn validate_not_eq(field: Field(a), to other_value: a) -> Bool {
   }
 }
 
-pub fn validate_uncompiled_regex(
-  field: Field(_),
-  name: String,
-  regex: String,
-  error: String,
-) -> Bool {
+pub fn validate_regex(field: Field(_), regex: Regex) -> Bool {
   case field {
-    IntField(_, _, _) -> todo
-    FloatField(_, _, _) -> todo
-    StringField(_, _, _) -> todo
-    BoolField(_, _, _) -> todo
+    IntField(_, value, _) -> int.to_string(value)
+    FloatField(_, value, _) -> float.to_string(value)
+    StringField(_, value, _) -> value
+    BoolField(_, value, _) -> bool.to_string(value)
   }
-}
-
-pub fn validate_regex(
-  field: Field(_),
-  name: String,
-  regex: Regex,
-  error: String,
-) -> Bool {
-  case field {
-    IntField(_, _, _) -> todo
-    FloatField(_, _, _) -> todo
-    StringField(_, _, _) -> todo
-    BoolField(_, _, _) -> todo
-  }
+  |> regex.check(regex, _)
 }
 
 pub fn use_validator_function(
-  field: Field(_),
-  name: String,
-  validator: fn(a) -> Bool,
-  error: String,
+  field: Field(a),
+  validator validate: fn(a) -> Bool,
 ) -> Bool {
+  // Unfortunately, this is the only way to call the validator function without the type system forcing us to use the same time all through
   case field {
-    IntField(_, _, _) -> todo
-    FloatField(_, _, _) -> todo
-    StringField(_, _, _) -> todo
-    BoolField(_, _, _) -> todo
+    IntField(_, value, _) -> dynamic.from(value)
+    FloatField(_, value, _) -> dynamic.from(value)
+    StringField(_, value, _) -> dynamic.from(value)
+    BoolField(_, value, _) -> dynamic.from(value)
   }
+  |> dynamic.unsafe_coerce
+  |> validate
 }
 
 fn string_to_float_byte_size(value: String) -> Float {

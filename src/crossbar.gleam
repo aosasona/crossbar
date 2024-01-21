@@ -1,8 +1,7 @@
 import crossbar/internal/cast
 import crossbar/internal/field.{
   type Field, type Rule, BoolField, Eq, FloatField, IntField, MaxLength, MaxSize,
-  MinLength, MinSize, NotEq, Regex, Required, StringField, UncompiledRegex,
-  ValidatorFunction,
+  MinLength, MinSize, NotEq, Regex, Required, StringField, ValidatorFunction,
 }
 import gleam/bool
 import gleam/float
@@ -48,11 +47,6 @@ pub fn rule_to_string(rule: Rule(_)) -> String {
     MaxLength(_) -> "max_length"
     Eq(_, _) -> "eq"
     NotEq(_, _) -> "not_eq"
-    UncompiledRegex(name, _, _) -> {
-      use <- bool.guard(when: name == "", return: "uncompiled_regex")
-      name
-    }
-
     Regex(name, _, _) -> {
       use <- bool.guard(when: name == "", return: "regex")
       name
@@ -76,17 +70,16 @@ pub fn rule_to_error_string(rule: Rule(_)) -> String {
       "must be equal to " <> extract_last_error_part(name, value)
     NotEq(name, value) ->
       "must not be equal to " <> extract_last_error_part(name, value)
-    UncompiledRegex(_, regex, error) -> {
-      use <- bool.guard(when: error != "", return: error)
-      "must match the following pattern: " <> regex
-    }
     Regex(_, _, error) -> error
     ValidatorFunction(_, _, error) -> error
   }
 }
 
 fn extract_last_error_part(name: String, value: a) -> String {
-  use <- bool.guard(when: name == "", return: cast.to_string(value))
+  let value_string = cast.to_string(value)
+  use <- bool.guard(when: name == "", return: value_string)
+  use <- bool.guard(when: value_string == "", return: name)
+
   name <> " (" <> cast.to_string(value) <> ")"
 }
 
@@ -116,7 +109,6 @@ fn int_rules_to_float_rules(rules: List(Rule(Int))) -> List(Rule(Float)) {
       MaxLength(v) -> MaxLength(v)
       Eq(name, value) -> Eq(name, int.to_float(value))
       NotEq(name, value) -> NotEq(name, int.to_float(value))
-      UncompiledRegex(name, regex, error) -> UncompiledRegex(name, regex, error)
       Regex(name, regex, error) -> Regex(name, regex, error)
 
       // Ideally, the type system will prevent this from happening, but just in case the user refuses to read the documentation for `to_float`, we'll handle it here
@@ -254,24 +246,16 @@ pub fn regex(
   append_rule(field, Regex(name, regex, error))
 }
 
-/// The `uncompiled_regex` rule takes a string representation of a regex and compiles it for you, if you want to use a pre-compiled regex, use the `regex` rule instead.
-/// The main difference is that this will not let you pass in additional options, so if you need those, you should use the `regex` rule instead.
+/// Run the validation on the given field, returns an `Ok` if the validation was successful, otherwise returns an `Error` with a list of errors.
 ///
 /// ## Example
 ///
 /// ```gleam
-/// string("name", "1john")
-/// |> uncompiled_regex("starts_with_number", "^[0-9]",  "must start with a number")
+/// let field = int("age", 6)
+/// |> to_float
+/// |> min_value(5.0)
+/// |> validate
 /// ```
-pub fn uncompiled_regex(
-  field field: Field(a),
-  rule_name name: String,
-  regex regex: String,
-  error_message error: String,
-) -> Field(a) {
-  append_rule(field, UncompiledRegex(name, regex, error))
-}
-
 pub fn validate(field: Field(a)) -> ValidationResult(a) {
   let validation_result = validate_field(field, field.rules, [])
 
@@ -296,7 +280,9 @@ fn validate_field(
         MaxLength(length) -> field.validate_max_length(field, length)
         Eq(_, value) -> field.validate_eq(field, value)
         NotEq(_, value) -> field.validate_not_eq(field, value)
-        _ -> todo as "other rules have not been implemented yet"
+        Regex(_, regex, _) -> field.validate_regex(field, regex)
+        ValidatorFunction(_, func, _) ->
+          field.use_validator_function(field, func)
       }
 
       let new_errors = {
