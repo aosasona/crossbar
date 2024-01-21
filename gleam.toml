@@ -15,6 +15,7 @@ internal_modules = [
 
 [dependencies]
 gleam_stdlib = "~> 0.34"
+gleam_json = "~> 1.0"
 
 [dev-dependencies]
 gleeunit = "~> 1.0"

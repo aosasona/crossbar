@@ -6,8 +6,23 @@ import crossbar/internal/field.{
 import gleam/bool
 import gleam/float
 import gleam/int
+import gleam/json
 import gleam/list.{append}
 import gleam/regex
+
+pub type JsonMode {
+  /// Return errors as an array of error strings
+  /// ```json
+  /// { "field_name": ["is required", "must be at least 5 characters"] }
+  /// ```
+  Array
+
+  /// Return errors as an object with the rule name as the key and the error string as the value
+  /// ```json
+  /// { "field_name": { "required": "is required", "min_length": "must be at least 5 characters" } }
+  /// ```
+  KeyValue
+}
 
 /// The `CrossBarError` type is used to represent errors that occur during validation.
 pub type CrossBarError {
@@ -263,6 +278,122 @@ pub fn validate(field: Field(a)) -> ValidationResult(a) {
     [] -> Ok(field)
     _ -> Error(validation_result)
   }
+}
+
+/// Validate a list of fields, returns a list of tuples with the field name and a list of errors - unfortunately, currently, only supports validating fields of the same type.
+pub fn validate_many(
+  fields: List(Field(_)),
+) -> List(#(String, List(CrossBarError))) {
+  fields
+  |> list.map(fn(field) {
+    let errors = case validate(field) {
+      Ok(_) -> []
+      Error(errors) -> errors
+    }
+
+    #(field.name, errors)
+  })
+}
+
+/// Useful for extracting the errors as a list of tuples (#(rule_name, error_as_string)), this is useful for returning errors as JSON.
+pub fn extract_errors(result: ValidationResult(a)) -> List(#(String, String)) {
+  let errors = case result {
+    Ok(_) -> []
+    Error(errors) -> errors
+  }
+
+  list.map(errors, fn(error) {
+    case error {
+      FailedRule(_, rule, error) -> #(rule, error)
+    }
+  })
+}
+
+/// Transform a field into a tuple that can be used to generate JSON, this is useful for returning errors as JSON.
+///
+/// ## Example
+///
+/// ```gleam
+/// let first_name =
+///   string("first_name", "")
+///   |> required
+///   |> min_length(3)
+///   |> to_json_tuple(KeyValue)
+///
+/// let last_name =
+///   string("last_name", "Smith")
+///   |> required
+///   |> min_length(1)
+///   |> max_length(3)
+///   |> to_json_tuple(KeyValue)
+///
+/// json.object([first_name, last_name])
+/// |> json.to_string
+/// |> io.println
+/// ```
+///
+/// The above example will produce the following JSON:
+///
+/// ```json
+/// {
+///   "first_name": {
+///     "required": "is required",
+///     "min_length": "must be at least 3 characters"
+///   },
+///   "last_name": {
+///     "max_length": "must not be longer than 3 characters"
+///   }
+/// }
+/// ```
+pub fn to_json_tuple(field: Field(_), mode: JsonMode) -> #(String, json.Json) {
+  let errors =
+    field
+    |> validate
+    |> extract_errors
+
+  use <- bool.guard(when: errors == [], return: #(field.name, json.null()))
+
+  let json_value = case mode {
+    Array -> {
+      let errors_list = list.map(errors, fn(e) { e.1 })
+      json.array(errors_list, json.string)
+    }
+    KeyValue ->
+      json.object(list.map(errors, fn(e) { #(e.0, json.string(e.1)) }))
+  }
+
+  #(field.name, json_value)
+}
+
+/// Useful for checking if the result of `to_json_tuple` collected into a list has any errors, this is useful for checking if any of the fields failed validation.
+///
+/// ## Example
+///
+/// ```gleam
+/// let first_name =
+///   string("first_name", "John")
+///   |> required
+///   |> min_length(3)
+///   |> to_json_tuple(KeyValue)
+///
+/// let last_name =
+///   string("last_name", "Smith")
+///   |> required
+///   |> min_length(1)
+///   |> max_length(10)
+///   |> to_json_tuple(KeyValue)
+///
+/// let errors = [first_name, last_name]
+///
+/// case has_errors(errors) {
+///   True -> io.println("There are errors")
+///   False -> io.println("There are no errors")
+/// }
+/// ```
+pub fn has_errors(json_errors: List(#(String, json.Json))) -> Bool {
+  json_errors
+  |> list.map(fn(e) { e.1 })
+  |> list.any(fn(e) { e != json.null() })
 }
 
 fn validate_field(
