@@ -1,12 +1,14 @@
 import gleam/list
 import gleeunit
 import gleeunit/should
-import gleam/io
 import gleam/regex
+import gleam/io
+import gleam/json
 import gleam/string
 import crossbar.{
-  type CrossBarError, bool, eq, float, int, max_length, max_value, min_length,
-  min_value, not_eq, required, string, to_float, validate, with_validator,
+  type CrossBarError, KeyValue, bool, eq, float, int, max_length, max_value,
+  min_length, min_value, not_eq, required, string, to_float, to_json_tuple,
+  validate, validate_many, with_validator,
 }
 
 pub fn main() {
@@ -68,6 +70,82 @@ pub fn composite_test() {
   |> max_value(21.0)
   |> validate
   |> should.be_error
+}
+
+pub fn validate_many_test() {
+  let first_name =
+    string("first_name", "John")
+    |> required
+    |> min_length(3)
+
+  let last_name =
+    string("last_name", "Doe")
+    |> required
+    |> min_length(3)
+
+  validate_many([first_name, last_name])
+}
+
+pub fn to_json_test() {
+  let expected =
+    "{\"first_name\":{\"required\":\"is required\",\"min_length\":\"must be at least 3 characters\"},\"last_name\":{\"max_length\":\"must not be longer than 3 characters\"}}"
+
+  let first_name =
+    string("first_name", "")
+    |> required
+    |> min_length(3)
+    |> to_json_tuple(KeyValue)
+
+  let last_name =
+    string("last_name", "Smith")
+    |> required
+    |> min_length(1)
+    |> max_length(3)
+    |> to_json_tuple(KeyValue)
+
+  json.object([first_name, last_name])
+  |> json.to_string
+  |> should.equal(expected)
+}
+
+pub fn has_errors_test() {
+  let first_name =
+    string("first_name", "")
+    |> required
+    |> min_length(3)
+
+  let last_name =
+    string("last_name", "Smith")
+    |> required
+    |> min_length(1)
+    |> max_length(3)
+
+  let errors =
+    [first_name, last_name]
+    |> list.map(fn(f) { to_json_tuple(f, KeyValue) })
+    |> crossbar.has_errors
+
+  errors
+  |> should.equal(True)
+
+  let fname =
+    string("first_name", "John")
+    |> required
+    |> min_length(3)
+
+  let lname =
+    string("last_name", "Smith")
+    |> required
+    |> min_length(1)
+    |> max_length(10)
+
+  let no_errors =
+    [fname, lname]
+    |> list.map(fn(f) { to_json_tuple(f, KeyValue) })
+    |> crossbar.has_errors
+
+  no_errors
+  |> should.equal(False)
 }
 
 pub fn required_test() {
