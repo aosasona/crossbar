@@ -13,13 +13,13 @@ import gleam/regex
 pub type JsonMode {
   /// Return errors as an array of error strings
   /// ```json
-  /// { "field_name": ["is required", "must be at least 5 characters"] }
+  /// ["is required", "must be at least 5 characters"]
   /// ```
   Array
 
   /// Return errors as an object with the rule name as the key and the error string as the value
   /// ```json
-  /// { "field_name": { "required": "is required", "min_length": "must be at least 5 characters" } }
+  /// { "required": "is required", "min_length": "must be at least 5 characters" }
   /// ```
   KeyValue
 }
@@ -73,6 +73,7 @@ pub fn rule_to_string(rule: Rule(_)) -> String {
   }
 }
 
+/// Get the default error message for a rule - this is internally used for error states
 pub fn rule_to_error_string(rule: Rule(_)) -> String {
   case rule {
     Required -> "is required"
@@ -150,6 +151,7 @@ fn int_rules_to_float_rules(rules: List(Rule(Int))) -> List(Rule(Float)) {
 /// |> to_float
 /// |> min_value(5.0)
 /// ```
+///
 pub fn to_float(field: Field(Int)) -> Field(Float) {
   let assert IntField(name, value, rules) = field
 
@@ -160,9 +162,13 @@ pub fn to_float(field: Field(Int)) -> Field(Float) {
 
 /// The required rule makes sure that the field is not empty, this is the expected behaviour in the following cases:
 /// > `Int`: **0** is considered empty
+///
 /// > `Float`: **0.0** is also considered empty
+///
 /// > `String`: "" (or anything that trims down to that) is considered empty
+///
 /// > `Bool`: this isn't really a thing, but it's here for completeness sake and it will always return true, because a bool is never empty (unless it is wrapped in an option)
+///
 pub fn required(field field: Field(_)) -> Field(_) {
   append_rule(field, Required)
 }
@@ -185,8 +191,11 @@ pub fn max_value(field field: Field(Float), size size: Float) -> Field(_) {
 
 /// The `min_length` rule makes sure that the field is at least the given length, this is the expected behaviour in the following cases:
 /// > `Int`: the length of the string representation of the number, this isn't very useful to you, but it's here for completeness sake. You probably want to use `min_value` instead.
+///
 /// > `Float`: the length of the string representation of the number, this isn't very useful to you, but it's here for completeness sake. You probably want to use `min_value` instead.
+///
 /// > `String`: the length of the string is evaluated directly
+///
 /// > `Bool`: this also isn't very useful to you, but it's here for completeness sake.
 ///
 /// NOTE: This function has been momentarily restricted to `String` fields, because it's not very useful for other types, open an issue if you ever find a use for it.
@@ -196,8 +205,11 @@ pub fn min_length(field field: Field(String), length length: Int) -> Field(_) {
 
 /// The `max_length` rule makes sure that the field is at most the given length, this is the expected behaviour in the following cases:
 /// > `Int`: the length of the string representation of the number, this isn't very useful to you, but it's here for completeness sake. You probably want to use `max_value` instead.
+///
 /// > `Float`: the length of the string representation of the number, this also isn't very useful to you, but it's here for completeness sake. You probably want to use `max_value` instead.
+///
 /// > `String`: the length of the string is evaluated directly
+///
 /// > `Bool`: this also isn't very useful to you, but it's here for completeness sake.
 ///
 /// NOTE: This function has been momentarily restricted to `String` fields, because it's not very useful for other types, open an issue if you ever find a use for it.
@@ -205,7 +217,7 @@ pub fn max_length(field field: Field(String), length length: Int) -> Field(_) {
   append_rule(field, MaxLength(length))
 }
 
-/// The `eq` rule makes sure that the field is equal to the given value, strings are NOT compared securely, so this is NOT safe to use for passwords, other types are compared directly.
+/// The `eq` rule makes sure that the field is equal to the given value, strings are NOT compared securely, so this is NOT safe to use for passwords, all types are compared directly.
 pub fn eq(field field: Field(a), name name: String, value value: a) -> Field(a) {
   append_rule(field, Eq(name, value))
 }
