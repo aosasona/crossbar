@@ -273,40 +273,6 @@ pub fn regex(
   append_rule(field, Regex(name, regex, error))
 }
 
-/// Run the validation on the given field, returns an `Ok` if the validation was successful, otherwise returns an `Error` with a list of errors.
-///
-/// ## Example
-///
-/// ```gleam
-/// let field = int("age", 6)
-/// |> to_float
-/// |> min_value(5.0)
-/// |> validate
-/// ```
-pub fn validate(field: Field(a)) -> ValidationResult(a) {
-  let validation_result = validate_field(field, field.rules, [])
-
-  case validation_result {
-    [] -> Ok(field)
-    _ -> Error(validation_result)
-  }
-}
-
-/// Validate a list of fields, returns a list of tuples with the field name and a list of errors - unfortunately, currently, only supports validating fields of the same type.
-pub fn validate_many(
-  fields: List(Field(_)),
-) -> List(#(String, List(CrossBarError))) {
-  fields
-  |> list.map(fn(field) {
-    let errors = case validate(field) {
-      Ok(_) -> []
-      Error(errors) -> errors
-    }
-
-    #(field.name, errors)
-  })
-}
-
 /// Useful for extracting the errors as a list of tuples (#(rule_name, error_as_string)), this is useful for returning errors as JSON.
 pub fn extract_errors(result: ValidationResult(a)) -> List(#(String, String)) {
   let errors = case result {
@@ -519,5 +485,49 @@ fn validate_field(
       validate_field(field, other_rules, new_errors)
     }
     [] -> errors
+  }
+}
+
+/// Run the validation on the given field, returns an `Ok` if the validation was successful, otherwise returns an `Error` with a list of errors.
+///
+/// ## Example
+///
+/// ```gleam
+/// let field = int("age", 6)
+/// |> to_float
+/// |> min_value(5.0)
+/// |> validate
+/// ```
+pub fn validate(field: Field(a)) -> ValidationResult(a) {
+  let validation_result = validate_field(field, field.rules, [])
+
+  case validation_result {
+    [] -> Ok(field)
+    _ -> Error(validation_result)
+  }
+}
+
+/// Validate a list of fields, returns a list of tuples with the field name and a list of errors - unfortunately, currently, only supports validating fields of the same type.
+pub fn validate_many(
+  fields fields: List(Field(_)),
+  keep_failed_only failed_only: Bool,
+) -> List(#(String, List(CrossBarError))) {
+  fields
+  |> list.map(fn(field) {
+    let errors = case validate(field) {
+      Ok(_) -> []
+      Error(errors) -> errors
+    }
+
+    #(field.name, errors)
+  })
+  |> fn(results) {
+    case failed_only {
+      True ->
+        list.filter(results, fn(res: #(String, List(CrossBarError))) {
+          list.length(res.1) > 0
+        })
+      False -> results
+    }
   }
 }

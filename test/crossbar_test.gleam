@@ -82,7 +82,12 @@ pub fn validate_many_test() {
     |> required
     |> min_length(3)
 
-  validate_many([first_name, last_name])
+  // Make sure that keeping failed only works
+  validate_many([first_name, last_name], keep_failed_only: True)
+  |> should.equal([])
+
+  validate_many([first_name, last_name], keep_failed_only: False)
+  |> should.not_equal([])
 }
 
 pub fn to_serializable_test() {
@@ -125,7 +130,7 @@ pub fn to_serializable_list_test() {
     |> max_length(3)
 
   [first_name, last_name]
-  |> validate_many
+  |> validate_many(False)
   |> to_serializable_list(KeyValue)
   |> serializables_to_string
   |> should.equal(expected)
@@ -144,13 +149,13 @@ pub fn has_errors_test() {
     |> max_length(3)
 
   [first_name, last_name]
-  |> validate_many
+  |> validate_many(False)
   |> list.map(fn(f) { to_serializable(Error(f.1), "", KeyValue) })
   |> crossbar.has_errors
   |> should.equal(True)
 
   [first_name, last_name]
-  |> validate_many
+  |> validate_many(False)
   |> to_serializable_list(KeyValue)
   |> crossbar.has_errors
   |> should.equal(True)
@@ -167,13 +172,13 @@ pub fn has_errors_test() {
     |> max_length(10)
 
   [fname, lname]
-  |> validate_many
+  |> validate_many(False)
   |> list.map(fn(f) { to_serializable(Error(f.1), "", KeyValue) })
   |> crossbar.has_errors
   |> should.equal(False)
 
   [fname, lname]
-  |> validate_many
+  |> validate_many(False)
   |> to_serializable_list(KeyValue)
   |> crossbar.has_errors
   |> should.equal(False)
