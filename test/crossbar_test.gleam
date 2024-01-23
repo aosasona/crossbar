@@ -2,13 +2,12 @@ import gleam/list
 import gleeunit
 import gleeunit/should
 import gleam/regex
-import gleam/io
-import gleam/json
 import gleam/string
 import crossbar.{
   type CrossBarError, KeyValue, bool, eq, float, int, max_length, max_value,
-  min_length, min_value, not_eq, required, string, to_float, to_json_tuple,
-  validate, validate_many, with_validator,
+  min_length, min_value, not_eq, required, serializables_to_string, string,
+  to_float, to_serializable, to_serializable_list, validate, validate_many,
+  with_validator,
 }
 
 pub fn main() {
@@ -86,7 +85,31 @@ pub fn validate_many_test() {
   validate_many([first_name, last_name])
 }
 
-pub fn to_json_test() {
+pub fn to_serializable_test() {
+  let expected =
+    "{\"first_name\":{\"required\":\"is required\",\"min_length\":\"must be at least 3 characters\"},\"renamed_last_name\":{\"max_length\":\"must not be longer than 3 characters\"}}"
+
+  let first_name =
+    string("first_name", "")
+    |> required
+    |> min_length(3)
+    |> validate
+    |> to_serializable("", KeyValue)
+
+  let last_name =
+    string("last_name", "Smith")
+    |> required
+    |> min_length(1)
+    |> max_length(3)
+    |> validate
+    |> to_serializable("renamed_last_name", KeyValue)
+
+  [first_name, last_name]
+  |> serializables_to_string
+  |> should.equal(expected)
+}
+
+pub fn to_serializable_list_test() {
   let expected =
     "{\"first_name\":{\"required\":\"is required\",\"min_length\":\"must be at least 3 characters\"},\"last_name\":{\"max_length\":\"must not be longer than 3 characters\"}}"
 
@@ -94,17 +117,15 @@ pub fn to_json_test() {
     string("first_name", "")
     |> required
     |> min_length(3)
-    |> to_json_tuple(KeyValue)
 
   let last_name =
     string("last_name", "Smith")
     |> required
     |> min_length(1)
     |> max_length(3)
-    |> to_json_tuple(KeyValue)
 
-  json.object([first_name, last_name])
-  |> json.to_string
+  to_serializable_list([first_name, last_name], KeyValue)
+  |> serializables_to_string
   |> should.equal(expected)
 }
 
@@ -120,12 +141,15 @@ pub fn has_errors_test() {
     |> min_length(1)
     |> max_length(3)
 
-  let errors =
-    [first_name, last_name]
-    |> list.map(fn(f) { to_json_tuple(f, KeyValue) })
-    |> crossbar.has_errors
+  [first_name, last_name]
+  |> validate_many
+  |> list.map(fn(f) { to_serializable(Error(f.1), "", KeyValue) })
+  |> crossbar.has_errors
+  |> should.equal(True)
 
-  errors
+  [first_name, last_name]
+  |> to_serializable_list(KeyValue)
+  |> crossbar.has_errors
   |> should.equal(True)
 
   let fname =
@@ -139,12 +163,15 @@ pub fn has_errors_test() {
     |> min_length(1)
     |> max_length(10)
 
-  let no_errors =
-    [fname, lname]
-    |> list.map(fn(f) { to_json_tuple(f, KeyValue) })
-    |> crossbar.has_errors
+  [fname, lname]
+  |> validate_many
+  |> list.map(fn(f) { to_serializable(Error(f.1), "", KeyValue) })
+  |> crossbar.has_errors
+  |> should.equal(False)
 
-  no_errors
+  [fname, lname]
+  |> to_serializable_list(KeyValue)
+  |> crossbar.has_errors
   |> should.equal(False)
 }
 

@@ -321,7 +321,19 @@ pub fn extract_errors(result: ValidationResult(a)) -> List(#(String, String)) {
   })
 }
 
-/// Transform a field into a tuple that can be used to generate JSON, this is useful for returning errors as JSON.
+fn extract_field_name(result: ValidationResult(a)) -> String {
+  case result {
+    Ok(field) -> field.name
+    Error(errors) -> {
+      case errors {
+        [FailedRule(name, _, _), ..] -> name
+        [] -> ""
+      }
+    }
+  }
+}
+
+/// Transform a field into a tuple that can be used to generate JSON, this is useful for returning errors as JSON. The `field_name` argument is optional, if you don't provide it, the field name will be extracted from the validation result if it can be (which is usually the case).
 ///
 /// ## Example
 ///
@@ -330,17 +342,81 @@ pub fn extract_errors(result: ValidationResult(a)) -> List(#(String, String)) {
 ///   string("first_name", "")
 ///   |> required
 ///   |> min_length(3)
-///   |> to_json_tuple(KeyValue)
+///   |> validate
+///   |> to_serializable("", KeyValue)
 ///
 /// let last_name =
 ///   string("last_name", "Smith")
 ///   |> required
 ///   |> min_length(1)
 ///   |> max_length(3)
-///   |> to_json_tuple(KeyValue)
+///   |> validate
+///   |> to_serializable("renamed_last_field", KeyValue)
 ///
 /// json.object([first_name, last_name])
 /// |> json.to_string
+/// |> io.println
+/// ```
+///
+/// The above example will produce the following JSON:
+///
+/// ```json
+/// {
+///   "first_name": {
+///     "required": "is required",
+///     "min_length": "must be at least 3 characters"
+///   },
+///   "renamed_last_name": {
+///     "max_length": "must not be longer than 3 characters"
+///   }
+/// }
+/// ```
+pub fn to_serializable(
+  result validation_result: ValidationResult(a),
+  field_name field_name: String,
+  mode mode: JsonMode,
+) -> #(String, json.Json) {
+  let name = case field_name {
+    "" -> extract_field_name(validation_result)
+    _ -> field_name
+  }
+
+  let errors =
+    validation_result
+    |> extract_errors
+
+  use <- bool.guard(when: errors == [], return: #(name, json.null()))
+
+  let json_value = case mode {
+    Array -> {
+      let errors_list = list.map(errors, fn(e) { e.1 })
+      json.array(errors_list, json.string)
+    }
+    KeyValue ->
+      json.object(list.map(errors, fn(e) { #(e.0, json.string(e.1)) }))
+  }
+
+  #(name, json_value)
+}
+
+/// Validate a list of fields and transform them into a list of tuples that can be used to generate JSON, this is useful for returning errors as JSON.
+///
+/// ## Example
+///
+/// ```gleam
+/// let first_name =
+///   string("first_name", "")
+///   |> required
+///   |> min_length(3)
+///
+/// let last_name =
+///   string("last_name", "Smith")
+///   |> required
+///   |> min_length(1)
+///   |> max_length(3)
+///
+/// to_serializable_list([first_name, last_name], KeyValue)
+/// |> serializables_to_string
 /// |> io.println
 /// ```
 ///
@@ -357,27 +433,28 @@ pub fn extract_errors(result: ValidationResult(a)) -> List(#(String, String)) {
 ///   }
 /// }
 /// ```
-pub fn to_json_tuple(field: Field(_), mode: JsonMode) -> #(String, json.Json) {
-  let errors =
+pub fn to_serializable_list(
+  fields: List(Field(_)),
+  mode: JsonMode,
+) -> List(#(String, json.Json)) {
+  fields
+  |> list.map(fn(field) {
     field
     |> validate
-    |> extract_errors
-
-  use <- bool.guard(when: errors == [], return: #(field.name, json.null()))
-
-  let json_value = case mode {
-    Array -> {
-      let errors_list = list.map(errors, fn(e) { e.1 })
-      json.array(errors_list, json.string)
-    }
-    KeyValue ->
-      json.object(list.map(errors, fn(e) { #(e.0, json.string(e.1)) }))
-  }
-
-  #(field.name, json_value)
+    |> to_serializable(field.name, mode)
+  })
 }
 
-/// Useful for checking if the result of `to_json_tuple` collected into a list has any errors, this is useful for checking if any of the fields failed validation.
+/// Utility function to convert a list of serializable tuples into a JSON string.
+pub fn serializables_to_string(
+  serializables: List(#(String, json.Json)),
+) -> String {
+  serializables
+  |> json.object
+  |> json.to_string
+}
+
+/// Useful for checking if the result of `to_serializable` collected into a list has any errors, this is useful for checking if any of the fields failed validation.
 ///
 /// ## Example
 ///
@@ -386,14 +463,14 @@ pub fn to_json_tuple(field: Field(_), mode: JsonMode) -> #(String, json.Json) {
 ///   string("first_name", "John")
 ///   |> required
 ///   |> min_length(3)
-///   |> to_json_tuple(KeyValue)
+///   |> to_serializable(KeyValue)
 ///
 /// let last_name =
 ///   string("last_name", "Smith")
 ///   |> required
 ///   |> min_length(1)
 ///   |> max_length(10)
-///   |> to_json_tuple(KeyValue)
+///   |> to_serializable(KeyValue)
 ///
 /// let errors = [first_name, last_name]
 ///
