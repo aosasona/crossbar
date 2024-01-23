@@ -124,7 +124,9 @@ pub fn to_serializable_list_test() {
     |> min_length(1)
     |> max_length(3)
 
-  to_serializable_list([first_name, last_name], KeyValue)
+  [first_name, last_name]
+  |> validate_many
+  |> to_serializable_list(KeyValue)
   |> serializables_to_string
   |> should.equal(expected)
 }
@@ -148,6 +150,7 @@ pub fn has_errors_test() {
   |> should.equal(True)
 
   [first_name, last_name]
+  |> validate_many
   |> to_serializable_list(KeyValue)
   |> crossbar.has_errors
   |> should.equal(True)
@@ -170,6 +173,7 @@ pub fn has_errors_test() {
   |> should.equal(False)
 
   [fname, lname]
+  |> validate_many
   |> to_serializable_list(KeyValue)
   |> crossbar.has_errors
   |> should.equal(False)

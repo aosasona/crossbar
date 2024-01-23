@@ -434,14 +434,12 @@ pub fn to_serializable(
 /// }
 /// ```
 pub fn to_serializable_list(
-  fields: List(Field(_)),
+  results: List(#(String, List(CrossBarError))),
   mode: JsonMode,
 ) -> List(#(String, json.Json)) {
-  fields
-  |> list.map(fn(field) {
-    field
-    |> validate
-    |> to_serializable(field.name, mode)
+  results
+  |> list.map(fn(r) {
+    to_serializable(field_name: r.0, result: Error(r.1), mode: mode)
   })
 }
 
