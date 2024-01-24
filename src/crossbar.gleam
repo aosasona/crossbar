@@ -53,6 +53,48 @@ pub fn bool(name name: String, value value: Bool) -> Field(Bool) {
   BoolField(name, value, [])
 }
 
+/// Convenience functions for extracting the value from a String field
+pub fn string_value(field: Field(String)) -> String {
+  case field {
+    StringField(_, value, _) -> value
+    _ -> ""
+  }
+}
+
+/// Convenience functions for extracting the value from an Int field
+pub fn int_value(field: Field(Int)) -> Int {
+  case field {
+    IntField(_, value, _) -> value
+    _ -> 0
+  }
+}
+
+/// Convenience functions for extracting the value from an Float field
+pub fn float_value(field: Field(Float)) -> Float {
+  case field {
+    FloatField(_, value, _) -> value
+    _ -> 0.0
+  }
+}
+
+/// Convenience functions for extracting the value from a Bool field
+pub fn bool_value(field: Field(Bool)) -> Bool {
+  case field {
+    BoolField(_, value, _) -> value
+    _ -> False
+  }
+}
+
+/// Returns the name of a field
+pub fn field_name(field: Field(a)) -> String {
+  case field {
+    IntField(name, _, _) -> name
+    FloatField(name, _, _) -> name
+    StringField(name, _, _) -> name
+    BoolField(name, _, _) -> name
+  }
+}
+
 /// Returns the string representation of a rule - this is internally used for error states
 pub fn rule_to_string(rule: Rule(_)) -> String {
   case rule {

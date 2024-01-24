@@ -18,6 +18,40 @@ fn extract_failed_rule_name(errors: List(CrossBarError)) -> List(String) {
   list.map(errors, with: fn(error) { error.rule })
 }
 
+pub fn getter_test() {
+  string("first_name", "John")
+  |> crossbar.string_value
+  |> should.equal("John")
+
+  int("age", 18)
+  |> crossbar.int_value
+  |> should.equal(18)
+
+  float("age", 18.0)
+  |> crossbar.float_value
+  |> should.equal(18.0)
+
+  bool("is_admin", True)
+  |> crossbar.bool_value
+  |> should.equal(True)
+
+  string("first_name", "John")
+  |> crossbar.field_name
+  |> should.equal("first_name")
+
+  int("age", 18)
+  |> crossbar.field_name
+  |> should.equal("age")
+
+  float("age", 18.0)
+  |> crossbar.field_name
+  |> should.equal("age")
+
+  bool("is_admin", True)
+  |> crossbar.field_name
+  |> should.equal("is_admin")
+}
+
 pub fn composite_test() {
   string("first_name", "John")
   |> required
