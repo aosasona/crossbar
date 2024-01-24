@@ -8,6 +8,7 @@ import gleam/float
 import gleam/int
 import gleam/json
 import gleam/list.{append}
+import gleam/string
 import gleam/regex
 
 pub type JsonMode {
@@ -92,11 +93,10 @@ pub fn rule_to_error_string(rule: Rule(_)) -> String {
 }
 
 fn extract_last_error_part(name: String, value: a) -> String {
-  let value_string = cast.to_string(value)
-  use <- bool.guard(when: name == "", return: value_string)
-  use <- bool.guard(when: value_string == "", return: name)
+  let name = string.trim(name)
+  use <- bool.guard(when: name != "", return: "`" <> name <> "` field")
 
-  name <> " (" <> cast.to_string(value) <> ")"
+  cast.to_string(value)
 }
 
 fn append_rule(field: Field(a), rule: Rule(a)) -> Field(a) {
@@ -222,6 +222,9 @@ pub fn eq(field field: Field(a), name name: String, value value: a) -> Field(a) 
   append_rule(field, Eq(name, value))
 }
 
+/// Alias for `eq`
+pub const equals = eq
+
 /// The `not_eq` rule makes sure that the field is not equal to the given value, strings are NOT compared securely, so this is NOT safe to use for passwords, other types are compared directly.
 pub fn not_eq(
   field field: Field(a),
@@ -230,6 +233,9 @@ pub fn not_eq(
 ) -> Field(a) {
   append_rule(field, NotEq(name, value))
 }
+
+/// Alias for `not_eq`
+pub const not_equals = not_eq
 
 /// The `with_validator` rule makes sure that the field passes the given validator function, the function should return a `Bool` and take the field value as its only argument.
 ///
