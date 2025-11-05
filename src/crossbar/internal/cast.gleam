@@ -4,8 +4,15 @@ import gleam/float
 import gleam/int
 import gleam/result
 
-@external(erlang, "crossbar_ffi", "to_dynamic")
-fn to_dynamic(value: a) -> Dynamic
+// Cast any value to the Dynamic type
+@external(erlang, "crossbar_ffi", "identity")
+@external(javascript, "../crossbar_ffi.mjs", "identity")
+pub fn to_dynamic(value: a) -> Dynamic
+
+// Cast a Dynamic value to any type
+@external(erlang, "crossbar_ffi", "identity")
+@external(javascript, "../crossbar_ffi.mjs", "identity")
+pub fn to_generic(value: Dynamic) -> a
 
 fn cast(from: b, decoder: Decoder(a)) -> Result(a, List(decode.DecodeError)) {
   from |> to_dynamic |> decode.run(decoder)
