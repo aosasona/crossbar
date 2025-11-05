@@ -1,14 +1,14 @@
-import gleam/list
-import gleeunit
-import gleeunit/should
-import gleam/regex
-import gleam/string
 import crossbar.{
   type CrossBarError, KeyValue, bool, eq, float, int, max_length, max_value,
   min_length, min_value, not_eq, required, serializables_to_string, string,
   to_float, to_serializable, to_serializable_list, validate, validate_many,
   with_validator,
 }
+import gleam/list
+import gleam/regexp
+import gleam/string
+import gleeunit
+import gleeunit/should
 
 pub fn main() {
   gleeunit.main()
@@ -441,7 +441,7 @@ pub fn not_eq_test() {
 }
 
 pub fn regex_test() {
-  let assert Ok(hello123regex) = regex.from_string("^[a-p0-9]+$")
+  let assert Ok(hello123regex) = regexp.from_string("^[a-p0-9]+$")
 
   "hello123"
   |> string("hello123 regex - a to p", _)
