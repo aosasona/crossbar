@@ -8,8 +8,8 @@ import gleam/float
 import gleam/int
 import gleam/json
 import gleam/list.{append}
+import gleam/regexp
 import gleam/string
-import gleam/regex
 
 pub type JsonMode {
   /// Return errors as an array of error strings
@@ -315,7 +315,7 @@ pub fn with_validator(
 pub fn regex(
   field field: Field(a),
   rule_name name: String,
-  regex regex: regex.Regex,
+  regex regex: regexp.Regexp,
   error_message error: String,
 ) -> Field(a) {
   append_rule(field, Regex(name, regex, error))
@@ -572,8 +572,8 @@ pub fn validate_many(
   |> fn(results) {
     case failed_only {
       True ->
-        list.filter(results, fn(res: #(String, List(CrossBarError))) {
-          list.length(res.1) > 0
+        list.filter(results, fn(result: #(String, List(CrossBarError))) {
+          result.1 != []
         })
       False -> results
     }
