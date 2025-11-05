@@ -1,11 +1,10 @@
 import crossbar/internal/cast
 import gleam/bit_array
 import gleam/bool
-import gleam/dynamic
 import gleam/float
-import gleam/order
 import gleam/int
-import gleam/regex.{type Regex}
+import gleam/order
+import gleam/regexp.{type Regexp}
 import gleam/string
 
 // Avoid using these types directly, they are not opaque because the associated functions are in the entry file
@@ -17,7 +16,7 @@ pub type Rule(a) {
   MaxLength(Int)
   Eq(name: String, value: a)
   NotEq(name: String, value: a)
-  Regex(name: String, regex: Regex, error: String)
+  Regex(name: String, regex: Regexp, error: String)
   ValidatorFunction(name: String, validator: fn(a) -> Bool, error: String)
 }
 
@@ -92,12 +91,14 @@ pub fn validate_eq(field: Field(a), to other_value: a) -> Bool {
   case field {
     IntField(_, value, _) ->
       int.compare(value, cast.int(other_value)) == order.Eq
+
     FloatField(_, value, _) ->
       float.compare(value, cast.float(other_value)) == order.Eq
+
     StringField(_, value, _) ->
       string.compare(value, cast.string(other_value)) == order.Eq
-    BoolField(_, value, _) ->
-      bool.compare(value, cast.bool(other_value)) == order.Eq
+
+    BoolField(_, value, _) -> value == cast.bool(other_value)
   }
 }
 
@@ -105,23 +106,25 @@ pub fn validate_not_eq(field: Field(a), to other_value: a) -> Bool {
   case field {
     IntField(_, value, _) ->
       int.compare(value, cast.int(other_value)) != order.Eq
+
     FloatField(_, value, _) ->
       float.compare(value, cast.float(other_value)) != order.Eq
+
     StringField(_, value, _) ->
       string.compare(value, cast.string(other_value)) != order.Eq
-    BoolField(_, value, _) ->
-      bool.compare(value, cast.bool(other_value)) != order.Eq
+
+    BoolField(_, value, _) -> value != cast.bool(other_value)
   }
 }
 
-pub fn validate_regex(field: Field(_), regex: Regex) -> Bool {
+pub fn validate_regex(field: Field(_), regex: Regexp) -> Bool {
   case field {
     IntField(_, value, _) -> int.to_string(value)
     FloatField(_, value, _) -> float.to_string(value)
     StringField(_, value, _) -> value
     BoolField(_, value, _) -> bool.to_string(value)
   }
-  |> regex.check(regex, _)
+  |> regexp.check(regex, _)
 }
 
 pub fn use_validator_function(
@@ -130,12 +133,12 @@ pub fn use_validator_function(
 ) -> Bool {
   // Unfortunately, this is the only way to call the validator function without the type system forcing us to use the same time all through
   case field {
-    IntField(_, value, _) -> dynamic.from(value)
-    FloatField(_, value, _) -> dynamic.from(value)
-    StringField(_, value, _) -> dynamic.from(value)
-    BoolField(_, value, _) -> dynamic.from(value)
+    IntField(_, value, _) -> cast.to_dynamic(value)
+    FloatField(_, value, _) -> cast.to_dynamic(value)
+    StringField(_, value, _) -> cast.to_dynamic(value)
+    BoolField(_, value, _) -> cast.to_dynamic(value)
   }
-  |> dynamic.unsafe_coerce
+  |> cast.to_generic
   |> validate
 }
 
