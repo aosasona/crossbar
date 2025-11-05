@@ -9,6 +9,7 @@ import gleam/int
 import gleam/json
 import gleam/list.{append}
 import gleam/regexp
+import gleam/result
 import gleam/string
 
 pub type JsonMode {
@@ -87,12 +88,7 @@ pub fn bool_value(field: Field(Bool)) -> Bool {
 
 /// Returns the name of a field
 pub fn field_name(field: Field(a)) -> String {
-  case field {
-    IntField(name, _, _) -> name
-    FloatField(name, _, _) -> name
-    StringField(name, _, _) -> name
-    BoolField(name, _, _) -> name
-  }
+  field.name
 }
 
 /// Returns the string representation of a rule - this is internally used for error states
@@ -173,11 +169,7 @@ fn int_rules_to_float_rules(rules: List(Rule(Int))) -> List(Rule(Float)) {
       ValidatorFunction(name, original_validator, error) ->
         ValidatorFunction(
           name,
-          fn(v: Float) {
-            v
-            |> float.round
-            |> original_validator
-          },
+          fn(v: Float) { v |> float.round |> original_validator },
           error,
         )
     }
@@ -395,9 +387,7 @@ pub fn to_serializable(
     _ -> field_name
   }
 
-  let errors =
-    validation_result
-    |> extract_errors
+  let errors = validation_result |> extract_errors
 
   use <- bool.guard(when: errors == [], return: #(name, json.null()))
 
@@ -406,8 +396,11 @@ pub fn to_serializable(
       let errors_list = list.map(errors, fn(e) { e.1 })
       json.array(errors_list, json.string)
     }
-    KeyValue ->
-      json.object(list.map(errors, fn(e) { #(e.0, json.string(e.1)) }))
+    KeyValue -> {
+      errors
+      |> list.map(fn(e) { #(e.0, json.string(e.1)) })
+      |> json.object()
+    }
   }
 
   #(name, json_value)
@@ -560,22 +553,16 @@ pub fn validate_many(
   fields fields: List(Field(_)),
   keep_failed_only failed_only: Bool,
 ) -> List(#(String, List(CrossBarError))) {
-  fields
-  |> list.map(fn(field) {
-    let errors = case validate(field) {
-      Ok(_) -> []
-      Error(errors) -> errors
-    }
-
-    #(field.name, errors)
-  })
-  |> fn(results) {
-    case failed_only {
-      True ->
-        list.filter(results, fn(result: #(String, List(CrossBarError))) {
-          result.1 != []
-        })
-      False -> results
-    }
+  let results = {
+    fields
+    |> list.map(fn(field) {
+      let errors = validate(field) |> result.unwrap_error([])
+      #(field.name, errors)
+    })
   }
+
+  use <- bool.guard(when: !failed_only, return: results)
+
+  results
+  |> list.filter(fn(result) { result.1 != [] })
 }
